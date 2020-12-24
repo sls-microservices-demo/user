@@ -1,6 +1,7 @@
 package users
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -45,10 +46,15 @@ func TestMaskCCs(t *testing.T) {
 	u.Cards = append(u.Cards, Card{LongNum: "abcdefg"})
 	u.Cards = append(u.Cards, Card{LongNum: "hijklmnopqrs"})
 	u.MaskCCs()
+	u.AddLinks()
 	if u.Cards[0].LongNum != "***defg" {
 		t.Error("Card one CC not masked")
 	}
 	if u.Cards[1].LongNum != "********pqrs" {
 		t.Error("Card two CC not masked")
 	}
+	data, _ := json.Marshal(u)
+	fmt.Printf("%+v\n", u)
+	fmt.Println(string(data))
+
 }

@@ -11,12 +11,11 @@ import (
 	"strings"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/tracing/opentracing"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
-	"github.com/microservices-demo/user/users"
-	stdopentracing "github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sls-microservices-demo/user/users"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -24,7 +23,8 @@ var (
 )
 
 // MakeHTTPHandler mounts the endpoints into a REST-y HTTP handler.
-func MakeHTTPHandler(e Endpoints, logger log.Logger, tracer stdopentracing.Tracer) *mux.Router {
+func MakeHTTPHandler(e Endpoints, logger log.Logger) *mux.Router {
+
 	r := mux.NewRouter().StrictSlash(false)
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorLogger(logger),
@@ -35,66 +35,76 @@ func MakeHTTPHandler(e Endpoints, logger log.Logger, tracer stdopentracing.Trace
 	// GET /register    Register
 	// GET /health      Health Check
 
-	r.Methods("GET").Path("/login").Handler(httptransport.NewServer(
+	r.Methods("GET").Path("/login").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.LoginEndpoint,
 		decodeLoginRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /login", logger)))...,
-	))
-	r.Methods("POST").Path("/register").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.TraceServer()(tracer, "GET /login", logger)))...,
+	), "GET /login"))
+	r.Methods("POST").Path("/register").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.RegisterEndpoint,
 		decodeRegisterRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /register", logger)))...,
-	))
-	r.Methods("GET").PathPrefix("/customers").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /register", logger)))...,
+	), "POST /register"))
+	r.Methods("GET").PathPrefix("/customers").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.UserGetEndpoint,
 		decodeGetRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /customers", logger)))...,
-	))
-	r.Methods("GET").PathPrefix("/cards").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /customers", logger)))...,
+	), "GET /customers"))
+	r.Methods("GET").PathPrefix("/cards").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.CardGetEndpoint,
 		decodeGetRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /cards", logger)))...,
-	))
-	r.Methods("GET").PathPrefix("/addresses").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /cards", logger)))...,
+	), "GET /cards"))
+	r.Methods("GET").PathPrefix("/addresses").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.AddressGetEndpoint,
 		decodeGetRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /addresses", logger)))...,
-	))
-	r.Methods("POST").Path("/customers").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /addresses", logger)))...,
+	), "GET /addresses"))
+	r.Methods("POST").Path("/customers").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.UserPostEndpoint,
 		decodeUserRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /customers", logger)))...,
-	))
-	r.Methods("POST").Path("/addresses").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /customers", logger)))...,
+	), "POST /customers"))
+	r.Methods("POST").Path("/addresses").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.AddressPostEndpoint,
 		decodeAddressRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /addresses", logger)))...,
-	))
-	r.Methods("POST").Path("/cards").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /addresses", logger)))...,
+	), "POST /addresses"))
+	r.Methods("POST").Path("/cards").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.CardPostEndpoint,
 		decodeCardRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /cards", logger)))...,
-	))
-	r.Methods("DELETE").PathPrefix("/").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /cards", logger)))...,
+	), "POST /cards"))
+	r.Methods("DELETE").PathPrefix("/").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.DeleteEndpoint,
 		decodeDeleteRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "DELETE /", logger)))...,
-	))
-	r.Methods("GET").PathPrefix("/health").Handler(httptransport.NewServer(
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "DELETE /", logger)))...,
+	), "DELETE /"))
+	r.Methods("GET").PathPrefix("/health").Handler(otelhttp.NewHandler(httptransport.NewServer(
 		e.HealthEndpoint,
 		decodeHealthRequest,
 		encodeHealthResponse,
-		append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /health", logger)))...,
-	))
+		options...,
+	//append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /health", logger)))...,
+	), "GET /health"))
 	r.Handle("/metrics", promhttp.Handler())
 	return r
 }

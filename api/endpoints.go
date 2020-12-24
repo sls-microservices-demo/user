@@ -8,10 +8,11 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/tracing/opentracing"
-	"github.com/microservices-demo/user/db"
-	"github.com/microservices-demo/user/users"
 	stdopentracing "github.com/opentracing/opentracing-go"
+	"github.com/sls-microservices-demo/user/db"
+	"github.com/sls-microservices-demo/user/users"
+	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Endpoints collects the endpoints that comprise the Service.
@@ -30,18 +31,18 @@ type Endpoints struct {
 
 // MakeEndpoints returns an Endpoints structure, where each endpoint is
 // backed by the given service.
-func MakeEndpoints(s Service, tracer stdopentracing.Tracer) Endpoints {
+func MakeEndpoints(s Service) Endpoints {
 	return Endpoints{
-		LoginEndpoint:       opentracing.TraceServer(tracer, "GET /login")(MakeLoginEndpoint(s)),
-		RegisterEndpoint:    opentracing.TraceServer(tracer, "POST /register")(MakeRegisterEndpoint(s)),
-		HealthEndpoint:      opentracing.TraceServer(tracer, "GET /health")(MakeHealthEndpoint(s)),
-		UserGetEndpoint:     opentracing.TraceServer(tracer, "GET /customers")(MakeUserGetEndpoint(s)),
-		UserPostEndpoint:    opentracing.TraceServer(tracer, "POST /customers")(MakeUserPostEndpoint(s)),
-		AddressGetEndpoint:  opentracing.TraceServer(tracer, "GET /addresses")(MakeAddressGetEndpoint(s)),
-		AddressPostEndpoint: opentracing.TraceServer(tracer, "POST /addresses")(MakeAddressPostEndpoint(s)),
-		CardGetEndpoint:     opentracing.TraceServer(tracer, "GET /cards")(MakeCardGetEndpoint(s)),
-		DeleteEndpoint:      opentracing.TraceServer(tracer, "DELETE /")(MakeDeleteEndpoint(s)),
-		CardPostEndpoint:    opentracing.TraceServer(tracer, "POST /cards")(MakeCardPostEndpoint(s)),
+		LoginEndpoint:       (MakeLoginEndpoint(s)),
+		RegisterEndpoint:    (MakeRegisterEndpoint(s)),
+		HealthEndpoint:      (MakeHealthEndpoint(s)),
+		UserGetEndpoint:     (MakeUserGetEndpoint(s)),
+		UserPostEndpoint:    (MakeUserPostEndpoint(s)),
+		AddressGetEndpoint:  (MakeAddressGetEndpoint(s)),
+		AddressPostEndpoint: (MakeAddressPostEndpoint(s)),
+		CardGetEndpoint:     (MakeCardGetEndpoint(s)),
+		DeleteEndpoint:      (MakeDeleteEndpoint(s)),
+		CardPostEndpoint:    (MakeCardPostEndpoint(s)),
 	}
 }
 
@@ -160,14 +161,11 @@ func MakeAddressPostEndpoint(s Service) endpoint.Endpoint {
 // MakeUserGetEndpoint returns an endpoint via the given service.
 func MakeCardGetEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		var span stdopentracing.Span
-		span, ctx = stdopentracing.StartSpanFromContext(ctx, "get cards")
-		span.SetTag("service", "user")
-		defer span.Finish()
+		otelSpan := trace.SpanFromContext(ctx)
+		otelSpan.AddEvent("handling this...", trace.WithAttributes(label.Key("username").String("zc")))
+
 		req := request.(GetRequest)
-		cardspan := stdopentracing.StartSpan("addresses from db", stdopentracing.ChildOf(span.Context()))
 		cards, err := s.GetCards(req.ID)
-		cardspan.Finish()
 		if req.ID == "" {
 			return EmbedStruct{cardsResponse{Cards: cards}}, err
 		}

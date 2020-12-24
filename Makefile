@@ -1,14 +1,15 @@
-NAME = weaveworksdemos/user
-DBNAME = weaveworksdemos/user-db
+NAME = sls-microservices/user
+DBNAME = sls-microservices/user-db
 INSTANCE = user
 TESTDB = weaveworkstestuserdb
 OPENAPI = $(INSTANCE)-testopenapi
-GROUP = weaveworksdemos
+GROUP = sls-microservices
 
 TAG=$(TRAVIS_COMMIT)
 
-default: docker
+.PHONY: default docker test
 
+default: docker
 
 pre: 
 	go get -v github.com/Masterminds/glide
@@ -37,6 +38,11 @@ coverprofile:
 	mv gover.coverprofile cover.profile
 	rm *.coverprofile
 
+mac:
+	CGO_ENABLED=0 go build -o user-mac
+
+linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o user
 
 dockerdev:
 	docker build -t $(INSTANCE)-dev .
@@ -49,6 +55,7 @@ dockerruntest: dockertestdb dockerdev
 	docker run -d --name $(INSTANCE)-dev -p 8084:8084 --link my$(TESTDB) -e MONGO_HOST="my$(TESTDB):27017" $(INSTANCE)-dev
 
 docker:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o user 
 	docker build -t $(NAME) -f docker/user/Dockerfile-release .
 
 dockerlocal:
@@ -70,7 +77,7 @@ mockservice:
 dockertest: dockerruntest
 	scripts/testcontainer.sh
 	docker run -h openapi --rm --name $(OPENAPI) --link user-dev -v $(PWD)/apispec/:/tmp/specs/\
-		weaveworksdemos/openapi /tmp/specs/$(INSTANCE).json\
+		sls-microservices/openapi /tmp/specs/$(INSTANCE).json\
 		http://$(INSTANCE)-dev:8084/\
 		-f /tmp/specs/hooks.js
 	 $(MAKE) cleandocker

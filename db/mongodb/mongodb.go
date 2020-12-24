@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/microservices-demo/user/users"
+	"github.com/sls-microservices-demo/user/users"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -302,6 +302,9 @@ func (m *Mongo) GetCard(id string) (users.Card, error) {
 // GetCards Gets all cards
 func (m *Mongo) GetCards() ([]users.Card, error) {
 	// TODO: add pagination
+	if m.Session == nil {
+		return nil, errors.New("db failed")
+	}
 	s := m.Session.Copy()
 	defer s.Close()
 	c := s.DB("").C("cards")

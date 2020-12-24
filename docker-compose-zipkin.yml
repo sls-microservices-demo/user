@@ -4,7 +4,7 @@ services:
     user:
         build:
             context: .
-        image: weaveworksdemos/user
+        image: sls-microservices/user
         hostname: user
         restart: always
         read_only: true
@@ -17,7 +17,7 @@ services:
     user-db:
         build:
             context: ./docker/user-db/
-        image: weaveworksdemos/user-db
+        image: sls-microservices/user-db
         hostname: user-db
         restart: always
         cap_drop:
